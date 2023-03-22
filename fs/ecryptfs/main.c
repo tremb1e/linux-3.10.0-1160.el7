@@ -492,6 +492,7 @@ static struct file_system_type ecryptfs_fs_type;
 static struct dentry *ecryptfs_mount(struct file_system_type *fs_type, int flags,
 			const char *dev_name, void *raw_data)
 {
+	int *s_stack_depth;	//Compile success after modification
 	struct super_block *s;
 	struct ecryptfs_sb_info *sbi;
 	struct ecryptfs_dentry_info *root_info;
@@ -567,10 +568,12 @@ static struct dentry *ecryptfs_mount(struct file_system_type *fs_type, int flags
 	s->s_maxbytes = path.dentry->d_sb->s_maxbytes;
 	s->s_blocksize = path.dentry->d_sb->s_blocksize;
 	s->s_magic = ECRYPTFS_SUPER_MAGIC;
-	s->s_stack_depth = path.dentry->d_sb->s_stack_depth + 1;
+	//s->s_stack_depth = path.dentry->d_sb->s_stack_depth + 1;
+	s_stack_depth = get_s_stack_depth(path.dentry->d_sb);	//Compile success after modification
 
 	rc = -EINVAL;
-	if (s->s_stack_depth > FILESYSTEM_MAX_STACK_DEPTH) {
+	//if (s->s_stack_depth > FILESYSTEM_MAX_STACK_DEPTH) {
+	if ( *s_stack_depth > FILESYSTEM_MAX_STACK_DEPTH) {	//Compile success after modification
 		pr_err("eCryptfs: maximum fs stacking depth exceeded\n");
 		goto out_free;
 	}
