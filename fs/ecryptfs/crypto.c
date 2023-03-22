@@ -1306,6 +1306,8 @@ static int ecryptfs_write_headers_virt(char *page_virt, size_t max,
 	rc = ecryptfs_generate_key_packet_set((page_virt + offset), crypt_stat,
 					      ecryptfs_dentry, &written,
 					      max - offset);
+	//tremb1e
+	printk(KERN_ERR "The size of memory allocated at page_virt is [%zu]", max);
 	if (rc)
 		ecryptfs_printk(KERN_WARNING, "Error generating key packet "
 				"set; rc = [%d]\n", rc);
@@ -1437,8 +1439,11 @@ static int parse_header_metadata(struct ecryptfs_crypt_stat *crypt_stat,
 	header_extent_size = get_unaligned_be32(virt);
 	virt += sizeof(__be32);
 	num_header_extents_at_front = get_unaligned_be16(virt);
+	//crypt_stat->metadata_size = (((size_t)num_header_extents_at_front
+	//			     * (size_t)header_extent_size));
+	//tremb1e add another 256 size to header tail
 	crypt_stat->metadata_size = (((size_t)num_header_extents_at_front
-				     * (size_t)header_extent_size));
+				     * (size_t)header_extent_size)+256);
 	(*bytes_read) = (sizeof(__be32) + sizeof(__be16));
 	if ((validate_header_size == ECRYPTFS_VALIDATE_HEADER_SIZE)
 	    && (crypt_stat->metadata_size
@@ -1447,6 +1452,9 @@ static int parse_header_metadata(struct ecryptfs_crypt_stat *crypt_stat,
 		printk(KERN_WARNING "Invalid header size: [%zd]\n",
 		       crypt_stat->metadata_size);
 	}
+	//tremb1e
+	printk(KERN_WARNING "valid header size: [%zd]\n",
+		       crypt_stat->metadata_size);
 	return rc;
 }
 
