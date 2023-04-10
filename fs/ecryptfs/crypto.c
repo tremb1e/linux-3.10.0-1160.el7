@@ -494,6 +494,12 @@ int ecryptfs_encrypt_page(struct page *page)
 	ecryptfs_inode = page->mapping->host;
 	crypt_stat =
 		&(ecryptfs_inode_to_private(ecryptfs_inode)->crypt_stat);
+	//
+	
+	// print_hex_dump(KERN_ERR, "在ecryptfs_encrypt_page方法中输出密钥crypt_stat->key: ", DUMP_PREFIX_ADDRESS, 16, 1,
+	// 			   crypt_stat->key,
+	// 			   crypt_stat->key_size, true);	
+	printk(KERN_ERR "在ecryptfs_encrypt_page方法中输出的密钥crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
 	BUG_ON(!(crypt_stat->flags & ECRYPTFS_ENCRYPTED));
 	enc_extent_page = alloc_page(GFP_USER);
 	if (!enc_extent_page) {
@@ -886,6 +892,9 @@ int ecryptfs_compute_root_iv(struct ecryptfs_crypt_stat *crypt_stat)
 				"MD5 while generating root IV\n");
 		goto out;
 	}
+	//tremb1e
+	//printk(KERN_ERR "ecryptfs_compute_root_iv--after ecryptfs_calculate_md5--crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
+	printk(KERN_ERR "在ecryptfs_compute_root_iv方法中使用ecryptfs_calculate_md5计算出的IV值dst = %*phN\n", (int)MD5_DIGEST_SIZE, dst);
 	memcpy(crypt_stat->root_iv, dst, crypt_stat->iv_bytes);
 out:
 	if (rc) {
@@ -898,6 +907,10 @@ out:
 static void ecryptfs_generate_new_key(struct ecryptfs_crypt_stat *crypt_stat)
 {
 	get_random_bytes(crypt_stat->key, crypt_stat->key_size);
+
+	//tremb1e
+	printk(KERN_ERR "在ecryptfs_generate_new_key方法中调用get_random_bytes后,生成的crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
+
 	crypt_stat->flags |= ECRYPTFS_KEY_VALID;
 	ecryptfs_compute_root_iv(crypt_stat);
 	if (unlikely(ecryptfs_verbosity > 0)) {
@@ -906,6 +919,11 @@ static void ecryptfs_generate_new_key(struct ecryptfs_crypt_stat *crypt_stat)
 				  crypt_stat->key_size);
 	}
 }
+
+//TODO:
+//	1.替换ecryptfs_generate_new_key方法，使内核态向用户态做申请FEK的操作。
+//	2.用户态将得到的FEK传入内核态。
+//	3.内核态将获得的FEK存入struct ecryptfs_crypt_stat中。
 
 /**
  * ecryptfs_copy_mount_wide_flags_to_inode_flags
@@ -1031,6 +1049,7 @@ int ecryptfs_new_file_context(struct inode *ecryptfs_inode)
 	crypt_stat->cipher[cipher_name_len] = '\0';
 	crypt_stat->key_size =
 		mount_crypt_stat->global_default_cipher_key_size;
+	printk(KERN_ERR "在ecryptfs_new_file_context方法中调用ecryptfs_generate_new_key\n");//tremb1e
 	ecryptfs_generate_new_key(crypt_stat);
 	rc = ecryptfs_init_crypt_ctx(crypt_stat);
 	if (rc)
@@ -1306,8 +1325,6 @@ static int ecryptfs_write_headers_virt(char *page_virt, size_t max,
 	rc = ecryptfs_generate_key_packet_set((page_virt + offset), crypt_stat,
 					      ecryptfs_dentry, &written,
 					      max - offset);
-	//tremb1e
-	printk(KERN_ERR "The size of memory allocated at page_virt is [%zu]", max);
 	if (rc)
 		ecryptfs_printk(KERN_WARNING, "Error generating key packet "
 				"set; rc = [%d]\n", rc);
@@ -1315,6 +1332,8 @@ static int ecryptfs_write_headers_virt(char *page_virt, size_t max,
 		offset += written;
 		*size = offset;
 	}
+	//tremb1e
+	printk(KERN_ERR "在ecryptfs_write_headers_virt方法中调用ecryptfs_generate_key_packet_set后,page_virt中的值 = %*phN\n", (int)max, page_virt);
 	return rc;
 }
 
@@ -1323,9 +1342,14 @@ ecryptfs_write_metadata_to_contents(struct inode *ecryptfs_inode,
 				    char *virt, size_t virt_len)
 {
 	int rc;
+	struct ecryptfs_crypt_stat *crypt_stat =&ecryptfs_inode_to_private(ecryptfs_inode)->crypt_stat;//tremb1e
 
 	rc = ecryptfs_write_lower(ecryptfs_inode, virt,
 				  0, virt_len);
+	
+	//tremb1e
+	printk(KERN_ERR "在ecryptfs_write_metadata_to_contents方法中调用ecryptfs_write_lower后,写入的crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
+
 	if (rc < 0)
 		printk(KERN_ERR "%s: Error attempting to write header "
 		       "information to lower file; rc = [%d]\n", __func__, rc);
@@ -1404,6 +1428,10 @@ int ecryptfs_write_metadata(struct dentry *ecryptfs_dentry,
 	/* Zeroed page ensures the in-header unencrypted i_size is set to 0 */
 	rc = ecryptfs_write_headers_virt(virt, virt_len, &size, crypt_stat,
 					 ecryptfs_dentry);
+
+	//tremb1e
+	printk(KERN_ERR "在ecryptfs_write_metadata方法中调用ecryptfs_write_headers_virt后,virt中的值 = %*phN\n", (int)virt_len, virt);
+
 	if (unlikely(rc)) {
 		printk(KERN_ERR "%s: Error whilst writing headers; rc = [%d]\n",
 		       __func__, rc);
@@ -1439,11 +1467,8 @@ static int parse_header_metadata(struct ecryptfs_crypt_stat *crypt_stat,
 	header_extent_size = get_unaligned_be32(virt);
 	virt += sizeof(__be32);
 	num_header_extents_at_front = get_unaligned_be16(virt);
-	//crypt_stat->metadata_size = (((size_t)num_header_extents_at_front
-	//			     * (size_t)header_extent_size));
-	//tremb1e add another 256 size to header tail
 	crypt_stat->metadata_size = (((size_t)num_header_extents_at_front
-				     * (size_t)header_extent_size)+256);
+				     * (size_t)header_extent_size));
 	(*bytes_read) = (sizeof(__be32) + sizeof(__be16));
 	if ((validate_header_size == ECRYPTFS_VALIDATE_HEADER_SIZE)
 	    && (crypt_stat->metadata_size
@@ -1452,9 +1477,6 @@ static int parse_header_metadata(struct ecryptfs_crypt_stat *crypt_stat,
 		printk(KERN_WARNING "Invalid header size: [%zd]\n",
 		       crypt_stat->metadata_size);
 	}
-	//tremb1e
-	printk(KERN_WARNING "valid header size: [%zd]\n",
-		       crypt_stat->metadata_size);
 	return rc;
 }
 

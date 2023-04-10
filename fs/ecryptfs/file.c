@@ -174,6 +174,7 @@ static int read_or_initialize_metadata(struct dentry *dentry)
 
 	if (!(mount_crypt_stat->flags & ECRYPTFS_XATTR_METADATA_ENABLED) &&
 	    !i_size_read(ecryptfs_inode_to_lower(inode))) {
+		printk(KERN_ERR "在read_or_initialize_metadata方法中调用ecryptfs_initialize_file\n");//tremb1e
 		rc = ecryptfs_initialize_file(dentry, inode);
 		if (!rc)
 			goto out;

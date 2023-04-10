@@ -178,6 +178,7 @@ int ecryptfs_send_miscdev(char *data, size_t data_size,
 	memcpy(msg_ctx->msg->data, data, data_size);
 	msg_ctx->msg_size = (sizeof(*msg_ctx->msg) + data_size);
 	list_add_tail(&msg_ctx->daemon_out_list, &daemon->msg_ctx_out_queue);
+	printk(KERN_ERR "在ecryptfs_send_miscdev方法中获取从内核态传递到用户态数据msg为 = %*phN\n", (int)msg_ctx->msg->data_len, msg_ctx->msg->data);//tremb1e
 	mutex_unlock(&msg_ctx->mux);
 
 	mutex_lock(&daemon->mux);

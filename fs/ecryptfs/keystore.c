@@ -346,6 +346,7 @@ write_tag_66_packet(char *signature, u8 cipher_code,
 	i += packet_size_len;
 	message[i++] = cipher_code;
 	memcpy(&message[i], crypt_stat->key, crypt_stat->key_size);
+
 	i += crypt_stat->key_size;
 	for (j = 0; j < crypt_stat->key_size; j++)
 		checksum += crypt_stat->key[j];
@@ -1189,6 +1190,9 @@ decrypt_pki_encrypted_session_key(struct ecryptfs_auth_tok *auth_tok,
 	memcpy(crypt_stat->key, auth_tok->session_key.decrypted_key,
 	       auth_tok->session_key.decrypted_key_size);
 	crypt_stat->key_size = auth_tok->session_key.decrypted_key_size;
+	//tremb1e
+	printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的EFEK = %*phN\n", (int)auth_tok->session_key.encrypted_key_size, auth_tok->session_key.encrypted_key);
+	printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的FEK = %*phN\n", (int)auth_tok->session_key.decrypted_key_size, auth_tok->session_key.decrypted_key);
 	rc = ecryptfs_cipher_code_to_string(crypt_stat->cipher, cipher_code);
 	if (rc) {
 		ecryptfs_printk(KERN_ERR, "Cipher code [%d] is invalid\n",
@@ -1731,6 +1735,11 @@ decrypt_passphrase_encrypted_session_key(struct ecryptfs_auth_tok *auth_tok,
 	auth_tok->session_key.flags |= ECRYPTFS_CONTAINS_DECRYPTED_KEY;
 	memcpy(crypt_stat->key, auth_tok->session_key.decrypted_key,
 	       auth_tok->session_key.decrypted_key_size);
+
+	//tremb1e
+	printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的EFEK = %*phN\n", (int)auth_tok->session_key.decrypted_key_size, auth_tok->session_key.encrypted_key);
+	printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的FEK = %*phN\n", (int)auth_tok->session_key.decrypted_key_size, auth_tok->session_key.decrypted_key);
+
 	crypt_stat->flags |= ECRYPTFS_KEY_VALID;
 	if (unlikely(ecryptfs_verbosity > 0)) {
 		ecryptfs_printk(KERN_DEBUG, "FEK of size [%zd]:\n",
@@ -2007,6 +2016,36 @@ out:
 	kfree(payload);
 	return rc;
 }
+
+//输出ecryptfs_auth_tok中的所有数据-tremb1e
+void print_ecryptfs_auth_tok(
+			struct ecryptfs_auth_tok *auth_tok,
+			struct ecryptfs_crypt_stat *crypt_stat,
+			struct ecryptfs_key_record *key_rec)	//tremb1e
+{
+	printk(KERN_ERR "输出ecryptfs_auth_tok中的所有数据\n");
+	printk(KERN_ERR "flags = %u\n", auth_tok->session_key.flags);
+	printk(KERN_ERR "encrypted_key_size = %u\n", auth_tok->session_key.encrypted_key_size);
+	printk(KERN_ERR "decrypted_key_size = %u\n", auth_tok->session_key.decrypted_key_size);
+	printk(KERN_ERR "EFEK = %*phN\n", (int)auth_tok->session_key.encrypted_key_size, auth_tok->session_key.encrypted_key);
+	printk(KERN_ERR "FEK = %*phN\n", (int)auth_tok->session_key.decrypted_key_size, auth_tok->session_key.decrypted_key);
+
+
+	printk(KERN_ERR "auth_tok->token.password.password_bytes = %u\n", auth_tok->token.password.password_bytes);
+	printk(KERN_ERR "auth_tok->token.password.hash_algo = %d\n", auth_tok->token.password.hash_algo);
+	printk(KERN_ERR "auth_tok->token.password.hash_iterations = %u\n", auth_tok->token.password.hash_iterations);
+	printk(KERN_ERR "auth_tok->token.password.session_key_encryption_key_bytes = %u\n", auth_tok->token.password.session_key_encryption_key_bytes);
+	printk(KERN_ERR "auth_tok->token.password.flags = %u\n", auth_tok->token.password.flags);
+	printk(KERN_ERR "auth_tok->token.password.session_key_encryption_key = %*phN\n", (int)64, auth_tok->token.password.session_key_encryption_key);
+	printk(KERN_ERR "auth_tok->token.password.signature = %*phN\n", (int)auth_tok->token.password.session_key_encryption_key_bytes, auth_tok->token.password.signature);
+	printk(KERN_ERR "auth_tok->token.password.salt = %*phN\n", (int)8, auth_tok->token.password.salt);
+
+	printk(KERN_ERR "key_rec = %u\n", key_rec->type);
+	printk(KERN_ERR "key_rec->enc_key_size = %zu\n", key_rec->enc_key_size);
+	printk(KERN_ERR "key_rec->sig = %*phN\n", (int)key_rec->enc_key_size, key_rec->sig);
+	printk(KERN_ERR "key_rec->enc_key = %*phN\n", (int)key_rec->enc_key_size, key_rec->enc_key);
+}
+
 /**
  * write_tag_1_packet - Write an RFC2440-compatible tag 1 (public key) packet
  * @dest: Buffer into which to write the packet
@@ -2095,6 +2134,9 @@ encrypted_session_key_set:
 	memcpy(&dest[(*packet_size)], key_rec->enc_key,
 	       key_rec->enc_key_size);
 	(*packet_size) += key_rec->enc_key_size;
+
+	printk(KERN_ERR "在write_tag_1_packet方法中输出的密钥crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);//tremb1e
+	print_ecryptfs_auth_tok(auth_tok, crypt_stat, key_rec);
 out:
 	if (rc)
 		(*packet_size) = 0;
@@ -2198,7 +2240,6 @@ write_tag_3_packet(char *dest, size_t *remaining_bytes,
 		.flags = CRYPTO_TFM_REQ_MAY_SLEEP
 	};
 	int rc = 0;
-
 	(*packet_size) = 0;
 	ecryptfs_from_hex(key_rec->sig, auth_tok->token.password.signature,
 			  ECRYPTFS_SIG_SIZE);
@@ -2363,6 +2404,8 @@ encrypted_session_key_set:
 	memcpy(&dest[(*packet_size)], key_rec->enc_key,
 	       key_rec->enc_key_size);
 	(*packet_size) += key_rec->enc_key_size;
+	printk(KERN_ERR "在write_tag_3_packet方法中输出的密钥crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);//tremb1e
+	print_ecryptfs_auth_tok(auth_tok, crypt_stat, key_rec);
 out:
 	if (rc)
 		(*packet_size) = 0;
@@ -2424,6 +2467,9 @@ ecryptfs_generate_key_packet_set(char *dest_base,
 			rc = process_find_global_auth_tok_for_sig_err(rc);
 			goto out_free;
 		}
+		printk(KERN_ERR "在ecryptfs_generate_key_packet_set方法中的输出:\n");
+		print_ecryptfs_auth_tok(auth_tok, crypt_stat, key_rec);//tremb1e
+
 		if (auth_tok->token_type == ECRYPTFS_PASSWORD) {
 			rc = write_tag_3_packet((dest_base + (*len)),
 						&max, auth_tok,

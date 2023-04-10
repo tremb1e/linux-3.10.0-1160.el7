@@ -358,6 +358,7 @@ sleep:
 		rc = -ENOMSG;
 	} else {
 		*msg = msg_ctx->msg;
+		printk(KERN_ERR "在ecryptfs_wait_for_response方法中获取从用户态传递到内核态数据msg为 = %*phN\n", (int)msg_ctx->msg->data_len, msg_ctx->msg->data);//tremb1e
 		msg_ctx->msg = NULL;
 	}
 	ecryptfs_msg_ctx_alloc_to_free(msg_ctx);
