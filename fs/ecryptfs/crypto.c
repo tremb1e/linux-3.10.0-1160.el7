@@ -893,7 +893,6 @@ int ecryptfs_compute_root_iv(struct ecryptfs_crypt_stat *crypt_stat)
 		goto out;
 	}
 	//tremb1e
-	//printk(KERN_ERR "ecryptfs_compute_root_iv--after ecryptfs_calculate_md5--crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
 	printk(KERN_ERR "在ecryptfs_compute_root_iv方法中使用ecryptfs_calculate_md5计算出的IV值dst = %*phN\n", (int)MD5_DIGEST_SIZE, dst);
 	memcpy(crypt_stat->root_iv, dst, crypt_stat->iv_bytes);
 out:
@@ -906,10 +905,12 @@ out:
 
 static void ecryptfs_generate_new_key(struct ecryptfs_crypt_stat *crypt_stat)
 {
-	get_random_bytes(crypt_stat->key, crypt_stat->key_size);
-
+	//get_random_bytes(crypt_stat->key, crypt_stat->key_size);
 	//tremb1e
-	printk(KERN_ERR "在ecryptfs_generate_new_key方法中调用get_random_bytes后,生成的crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
+	get_fek_from_userspace(crypt_stat->key, crypt_stat->key_size);
+	//get_random_bytes(crypt_stat->key, crypt_stat->key_size);
+	printk(KERN_ERR "在ecryptfs_generate_new_key方法中调用get_fek_from_userspace后,生成的crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
+
 
 	crypt_stat->flags |= ECRYPTFS_KEY_VALID;
 	ecryptfs_compute_root_iv(crypt_stat);
@@ -919,11 +920,6 @@ static void ecryptfs_generate_new_key(struct ecryptfs_crypt_stat *crypt_stat)
 				  crypt_stat->key_size);
 	}
 }
-
-//TODO:
-//	1.替换ecryptfs_generate_new_key方法，使内核态向用户态做申请FEK的操作。
-//	2.用户态将得到的FEK传入内核态。
-//	3.内核态将获得的FEK存入struct ecryptfs_crypt_stat中。
 
 /**
  * ecryptfs_copy_mount_wide_flags_to_inode_flags

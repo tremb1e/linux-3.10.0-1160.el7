@@ -382,6 +382,10 @@ struct ecryptfs_msg_ctx {
 #define ECRYPTFS_MSG_QUIT 101
 #define ECRYPTFS_MSG_REQUEST 102
 #define ECRYPTFS_MSG_RESPONSE 103
+//tremb1e:新添加两种ecryptfs_msg
+#define ECRYPTFS_MSG_REQUEST_FEK 104
+#define ECRYPTFS_MSG_RESPONSE_FEK 105
+
 	u8 type;
 	u32 index;
 	/* Counter converts to a sequence number. Each message sent
@@ -727,5 +731,11 @@ int ecryptfs_set_f_namelen(long *namelen, long lower_namelen,
 			   struct ecryptfs_mount_crypt_stat *mount_crypt_stat);
 int ecryptfs_derive_iv(char *iv, struct ecryptfs_crypt_stat *crypt_stat,
 		       loff_t offset);
+
+//tremb1e
+void get_fek_from_userspace(void *buf,int nbytes);
+
+int ecryptfs_request_fek(char *data, int data_len,
+			  struct ecryptfs_msg_ctx **msg_ctx);
 
 #endif /* #ifndef ECRYPTFS_KERNEL_H */

@@ -234,6 +234,9 @@ int ecryptfs_process_response(struct ecryptfs_daemon *daemon,
 	}
 	msg_ctx = &ecryptfs_msg_ctx_arr[msg->index];
 	mutex_lock(&msg_ctx->mux);
+	//tremb1e
+	printk(KERN_ERR "msg->index = %u", msg->index);
+	printk(KERN_ERR "msg_ctx->state = %d", msg_ctx->state);
 	if (msg_ctx->state != ECRYPTFS_MSG_CTX_STATE_PENDING) {
 		rc = -EINVAL;
 		printk(KERN_WARNING "%s: Desired context element is not "
@@ -323,6 +326,21 @@ int ecryptfs_send_message(char *data, int data_len,
 
 	mutex_lock(&ecryptfs_daemon_hash_mux);
 	rc = ecryptfs_send_message_locked(data, data_len, ECRYPTFS_MSG_REQUEST,
+					  msg_ctx);
+	mutex_unlock(&ecryptfs_daemon_hash_mux);
+	return rc;
+}
+
+//tremb1e
+int ecryptfs_request_fek(char *data, int data_len,
+			  struct ecryptfs_msg_ctx **msg_ctx)
+{
+
+	int rc;
+
+	mutex_lock(&ecryptfs_daemon_hash_mux);
+	//printk(KERN_ERR "ecryptfs_request_fek中msg_ctx->state = %d", (**msg_ctx).state);//state=2
+	rc = ecryptfs_send_message_locked(data, data_len, ECRYPTFS_MSG_REQUEST_FEK,
 					  msg_ctx);
 	mutex_unlock(&ecryptfs_daemon_hash_mux);
 	return rc;

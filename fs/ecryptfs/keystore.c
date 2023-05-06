@@ -2135,8 +2135,8 @@ encrypted_session_key_set:
 	       key_rec->enc_key_size);
 	(*packet_size) += key_rec->enc_key_size;
 
-	printk(KERN_ERR "在write_tag_1_packet方法中输出的密钥crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);//tremb1e
-	print_ecryptfs_auth_tok(auth_tok, crypt_stat, key_rec);
+	// printk(KERN_ERR "在write_tag_1_packet方法中输出的密钥crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);//tremb1e
+	// print_ecryptfs_auth_tok(auth_tok, crypt_stat, key_rec);
 out:
 	if (rc)
 		(*packet_size) = 0;
@@ -2404,8 +2404,8 @@ encrypted_session_key_set:
 	memcpy(&dest[(*packet_size)], key_rec->enc_key,
 	       key_rec->enc_key_size);
 	(*packet_size) += key_rec->enc_key_size;
-	printk(KERN_ERR "在write_tag_3_packet方法中输出的密钥crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);//tremb1e
-	print_ecryptfs_auth_tok(auth_tok, crypt_stat, key_rec);
+	// printk(KERN_ERR "在write_tag_3_packet方法中输出的密钥crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);//tremb1e
+	// print_ecryptfs_auth_tok(auth_tok, crypt_stat, key_rec);
 out:
 	if (rc)
 		(*packet_size) = 0;
@@ -2467,8 +2467,8 @@ ecryptfs_generate_key_packet_set(char *dest_base,
 			rc = process_find_global_auth_tok_for_sig_err(rc);
 			goto out_free;
 		}
-		printk(KERN_ERR "在ecryptfs_generate_key_packet_set方法中的输出:\n");
-		print_ecryptfs_auth_tok(auth_tok, crypt_stat, key_rec);//tremb1e
+		// printk(KERN_ERR "在ecryptfs_generate_key_packet_set方法中的输出:\n");
+		// print_ecryptfs_auth_tok(auth_tok, crypt_stat, key_rec);//tremb1e
 
 		if (auth_tok->token_type == ECRYPTFS_PASSWORD) {
 			rc = write_tag_3_packet((dest_base + (*len)),

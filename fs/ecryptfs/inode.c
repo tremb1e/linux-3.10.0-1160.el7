@@ -299,7 +299,7 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
 {
 	struct inode *ecryptfs_inode;
 	int rc;
-	struct ecryptfs_crypt_stat *crypt_stat; //tremb1e
+	//struct ecryptfs_crypt_stat *crypt_stat; //tremb1e
 
 	ecryptfs_inode = ecryptfs_do_create(directory_inode, ecryptfs_dentry,
 					    mode);
@@ -314,10 +314,10 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
 	printk(KERN_ERR "在ecryptfs_create方法中调用ecryptfs_initialize_file\n");//tremb1e
 	rc = ecryptfs_initialize_file(ecryptfs_dentry, ecryptfs_inode);
 
-	crypt_stat = &ecryptfs_inode_to_private(ecryptfs_inode)->crypt_stat;//tremb1e
+	//crypt_stat = &ecryptfs_inode_to_private(ecryptfs_inode)->crypt_stat;//tremb1e
 	// 输出struct ecryptfs_crypt_stat结构体的所有成员变量的值
 	printk(KERN_ERR "输出struct ecryptfs_crypt_stat结构体的所有成员变量的值");
-    print_ecryptfs_crypt_stat(crypt_stat);
+    //print_ecryptfs_crypt_stat(crypt_stat);
 
 	if (rc) {
 		ecryptfs_do_unlink(directory_inode, ecryptfs_dentry,
@@ -328,7 +328,7 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
 		goto out;
 	}
 	//tremb1e
-	printk(KERN_ERR "FEK = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
+	//printk(KERN_ERR "FEK = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
 
 	unlock_new_inode(ecryptfs_inode);
 	d_instantiate(ecryptfs_dentry, ecryptfs_inode);

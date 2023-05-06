@@ -28,6 +28,10 @@
 #include <linux/wait.h>
 #include <linux/module.h>
 #include "ecryptfs_kernel.h"
+#include <linux/delay.h>	//tremb1e
+
+//tremb1e
+char *fek;
 
 static atomic_t ecryptfs_num_miscdev_opens;
 
@@ -178,7 +182,7 @@ int ecryptfs_send_miscdev(char *data, size_t data_size,
 	memcpy(msg_ctx->msg->data, data, data_size);
 	msg_ctx->msg_size = (sizeof(*msg_ctx->msg) + data_size);
 	list_add_tail(&msg_ctx->daemon_out_list, &daemon->msg_ctx_out_queue);
-	printk(KERN_ERR "在ecryptfs_send_miscdev方法中获取从内核态传递到用户态数据msg为 = %*phN\n", (int)msg_ctx->msg->data_len, msg_ctx->msg->data);//tremb1e
+	//printk(KERN_ERR "在ecryptfs_send_miscdev方法中获取从内核态传递到用户态数据msg_ctx为 = %*phN\n", (int)msg_ctx->msg->data_len, msg_ctx->msg->data);//tremb1e
 	mutex_unlock(&msg_ctx->mux);
 
 	mutex_lock(&daemon->mux);
@@ -341,6 +345,12 @@ static int ecryptfs_miscdev_response(struct ecryptfs_daemon *daemon, char *data,
 {
 	struct ecryptfs_message *msg = (struct ecryptfs_message *)data;
 	int rc;
+	//tremb1e
+	//printk(KERN_ERR "msg = %*phN", (int)sizeof(data), data);
+	printk(KERN_ERR "msg = %*phN", (int)sizeof(data), msg);
+	//printk(KERN_ERR "sizeof(*msg) = [%zd]", sizeof(*msg));
+	//printk(KERN_ERR "msg->data_len = [%u]", msg->data_len);
+	//printk(KERN_ERR "data_size = [%zd]", data_size);
 
 	if ((sizeof(*msg) + msg->data_len) != data_size) {
 		printk(KERN_WARNING "%s: (sizeof(*msg) + msg->data_len) = "
@@ -377,6 +387,7 @@ ecryptfs_miscdev_write(struct file *file, const char __user *buf,
 	unsigned char packet_size_peek[ECRYPTFS_MAX_PKT_LEN_SIZE];
 	ssize_t rc;
 
+	printk(KERN_ERR "count = %zu", count);
 	if (count == 0) {
 		return 0;
 	} else if (count == MIN_NON_MSG_PKT_SIZE) {
@@ -413,6 +424,7 @@ ecryptfs_miscdev_write(struct file *file, const char __user *buf,
 
 memdup:
 	data = memdup_user(buf, count);
+	printk(KERN_ERR "ecryptfs_miscdev_write中的buf = %*phN", (int)count, data);
 	if (IS_ERR(data)) {
 		printk(KERN_ERR "%s: memdup_user returned error [%ld]\n",
 		       __func__, PTR_ERR(data));
@@ -443,6 +455,26 @@ memdup:
 			goto out_free;
 		}
 		break;
+	//tremb1e
+	case ECRYPTFS_MSG_RESPONSE_FEK:
+		if (count < (MIN_MSG_PKT_SIZE
+			     + sizeof(struct ecryptfs_message))) {
+			printk(KERN_WARNING "%s: Minimum acceptable packet "
+			       "size is [%zd], but amount of data written is "
+			       "only [%zd]. Discarding response packet.\n",
+			       __func__,
+			       (MIN_MSG_PKT_SIZE
+				+ sizeof(struct ecryptfs_message)), count);
+			rc = -EINVAL;
+			goto out_free;
+		}
+		fek = kmalloc(ECRYPTFS_MAX_KEY_BYTES, GFP_KERNEL);
+		memset(fek,0,ECRYPTFS_MAX_KEY_BYTES);
+
+		strncpy(fek, data+14, ECRYPTFS_MAX_KEY_BYTES);
+		printk(KERN_ERR "ecryptfs_miscdev_write中fek = %s", fek);
+
+		break;
 	case ECRYPTFS_MSG_HELO:
 	case ECRYPTFS_MSG_QUIT:
 		break;
@@ -459,6 +491,66 @@ out_free:
 	return rc;
 }
 
+//tremb1e
+void get_fek_from_userspace(void *buf, int nbytes)//tremb1e
+{
+	struct ecryptfs_msg_ctx *msg_ctx = NULL;
+	char *data = NULL;
+	int data_len = 0;
+	char *result;
+	int i = 0;
+	int rc = 0;
+
+	msg_ctx = kmalloc(sizeof(*msg_ctx), GFP_KERNEL);
+	memset(msg_ctx, 0, sizeof(*msg_ctx));
+
+	msg_ctx->state = ECRYPTFS_MSG_CTX_STATE_PENDING;
+	msg_ctx->type = ECRYPTFS_MSG_REQUEST_FEK;
+	
+	//向用户态申请获取密钥
+	rc = ecryptfs_request_fek(data, data_len, &msg_ctx);
+	if (rc) {
+		ecryptfs_printk(KERN_ERR, "Error sending request_fek to "
+				"ecryptfsd: %d\n", rc);
+	}
+
+	result = kmalloc(ECRYPTFS_MAX_KEY_BYTES, GFP_KERNEL);
+	memset(result,0,ECRYPTFS_MAX_KEY_BYTES);
+
+	msleep(1000);
+	
+	printk(KERN_ERR "get_fek_from_userspace中fek = %s", fek);
+
+	//fek此时是ascii码形式，需要转换成16进制
+
+	while (fek[i] != '\0')
+	{
+    	// 将每个ASCII码值转换为对应的十六进制值
+    	int hex = ((fek[i] >= '0' && fek[i] <= '9') ? (fek[i] - '0') : (fek[i] - 'a' + 10)) * 16 +
+              	((fek[i + 1] >= '0' && fek[i + 1] <= '9') ? (fek[i + 1] - '0') : (fek[i + 1] - 'a' + 10));
+
+    	// 将十六进制值转换为ASCII码字符并存储到结果中
+    	result[i / 2] = (char)hex;
+
+    	i += 2;
+	}
+
+    printk(KERN_ERR "转换后的fek为：%s\n", fek);
+	printk(KERN_ERR "转换后的result为：%*phN\n", (int)ECRYPTFS_MAX_KEY_BYTES, result);
+
+	if (nbytes > 0) {
+		memcpy(buf, result, nbytes);
+		memset(result,0,ECRYPTFS_MAX_KEY_BYTES);
+		memset(fek,0,ECRYPTFS_MAX_KEY_BYTES);
+		printk(KERN_ERR "memset 0 后fek = %s", fek);
+		printk(KERN_ERR "memset 0 后result = %s", result);
+	} else {
+		printk(KERN_ERR "get_fek_from_userspace时长度异常nbytes = %d", nbytes);
+		rc = -EIO;
+	}
+	kfree(result);
+	//kfree(msg_ctx);
+}
 
 static const struct file_operations ecryptfs_miscdev_fops = {
 	.owner   = THIS_MODULE,
