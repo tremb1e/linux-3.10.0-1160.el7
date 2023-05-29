@@ -234,9 +234,9 @@ int ecryptfs_process_response(struct ecryptfs_daemon *daemon,
 	}
 	msg_ctx = &ecryptfs_msg_ctx_arr[msg->index];
 	mutex_lock(&msg_ctx->mux);
-	//tremb1e
-	printk(KERN_ERR "msg->index = %u", msg->index);
-	printk(KERN_ERR "msg_ctx->state = %d", msg_ctx->state);
+	//tremb1e-printk
+	//printk(KERN_ERR "msg->index = %u", msg->index);
+	//printk(KERN_ERR "msg_ctx->state = %d", msg_ctx->state);
 	if (msg_ctx->state != ECRYPTFS_MSG_CTX_STATE_PENDING) {
 		rc = -EINVAL;
 		printk(KERN_WARNING "%s: Desired context element is not "
@@ -376,7 +376,7 @@ sleep:
 		rc = -ENOMSG;
 	} else {
 		*msg = msg_ctx->msg;
-		printk(KERN_ERR "在ecryptfs_wait_for_response方法中获取从用户态传递到内核态数据msg为 = %*phN\n", (int)msg_ctx->msg->data_len, msg_ctx->msg->data);//tremb1e
+		//printk(KERN_ERR "在ecryptfs_wait_for_response方法中获取从用户态传递到内核态数据msg为 = %*phN\n", (int)msg_ctx->msg->data_len, msg_ctx->msg->data);//tremb1e-printk
 		msg_ctx->msg = NULL;
 	}
 	ecryptfs_msg_ctx_alloc_to_free(msg_ctx);

@@ -345,12 +345,8 @@ static int ecryptfs_miscdev_response(struct ecryptfs_daemon *daemon, char *data,
 {
 	struct ecryptfs_message *msg = (struct ecryptfs_message *)data;
 	int rc;
-	//tremb1e
-	//printk(KERN_ERR "msg = %*phN", (int)sizeof(data), data);
-	printk(KERN_ERR "msg = %*phN", (int)sizeof(data), msg);
-	//printk(KERN_ERR "sizeof(*msg) = [%zd]", sizeof(*msg));
-	//printk(KERN_ERR "msg->data_len = [%u]", msg->data_len);
-	//printk(KERN_ERR "data_size = [%zd]", data_size);
+	//tremb1e-printk
+	//printk(KERN_ERR "msg = %*phN", (int)sizeof(data), msg);
 
 	if ((sizeof(*msg) + msg->data_len) != data_size) {
 		printk(KERN_WARNING "%s: (sizeof(*msg) + msg->data_len) = "
@@ -472,7 +468,8 @@ memdup:
 		memset(fek,0,ECRYPTFS_MAX_KEY_BYTES);
 
 		strncpy(fek, data+14, ECRYPTFS_MAX_KEY_BYTES);
-		printk(KERN_ERR "ecryptfs_miscdev_write中fek = %s", fek);
+		//tremb1e-printk
+		//printk(KERN_ERR "ecryptfs_miscdev_write中fek = %s", fek);
 
 		break;
 	case ECRYPTFS_MSG_HELO:
@@ -518,8 +515,8 @@ void get_fek_from_userspace(void *buf, int nbytes)//tremb1e
 	memset(result,0,ECRYPTFS_MAX_KEY_BYTES);
 
 	msleep(1000);
-	
-	printk(KERN_ERR "get_fek_from_userspace中fek = %s", fek);
+	//tremb1e-printk
+	//printk(KERN_ERR "get_fek_from_userspace中fek = %s", fek);
 
 	//fek此时是ascii码形式，需要转换成16进制
 
@@ -534,16 +531,17 @@ void get_fek_from_userspace(void *buf, int nbytes)//tremb1e
 
     	i += 2;
 	}
-
-    printk(KERN_ERR "转换后的fek为：%s\n", fek);
-	printk(KERN_ERR "转换后的result为：%*phN\n", (int)ECRYPTFS_MAX_KEY_BYTES, result);
+	//tremb1e-printk
+    //printk(KERN_ERR "转换后的fek为：%s\n", fek);
+	//printk(KERN_ERR "转换后的result为：%*phN\n", (int)ECRYPTFS_MAX_KEY_BYTES, result);
 
 	if (nbytes > 0) {
 		memcpy(buf, result, nbytes);
 		memset(result,0,ECRYPTFS_MAX_KEY_BYTES);
 		memset(fek,0,ECRYPTFS_MAX_KEY_BYTES);
-		printk(KERN_ERR "memset 0 后fek = %s", fek);
-		printk(KERN_ERR "memset 0 后result = %s", result);
+		//tremb1e-printk
+		//printk(KERN_ERR "memset 0 后fek = %s", fek);
+		//printk(KERN_ERR "memset 0 后result = %s", result);
 	} else {
 		printk(KERN_ERR "get_fek_from_userspace时长度异常nbytes = %d", nbytes);
 		rc = -EIO;

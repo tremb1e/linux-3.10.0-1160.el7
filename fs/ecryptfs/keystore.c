@@ -1190,9 +1190,9 @@ decrypt_pki_encrypted_session_key(struct ecryptfs_auth_tok *auth_tok,
 	memcpy(crypt_stat->key, auth_tok->session_key.decrypted_key,
 	       auth_tok->session_key.decrypted_key_size);
 	crypt_stat->key_size = auth_tok->session_key.decrypted_key_size;
-	//tremb1e
-	printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的EFEK = %*phN\n", (int)auth_tok->session_key.encrypted_key_size, auth_tok->session_key.encrypted_key);
-	printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的FEK = %*phN\n", (int)auth_tok->session_key.decrypted_key_size, auth_tok->session_key.decrypted_key);
+	//tremb1e-printk
+	//printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的EFEK = %*phN\n", (int)auth_tok->session_key.encrypted_key_size, auth_tok->session_key.encrypted_key);
+	//printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的FEK = %*phN\n", (int)auth_tok->session_key.decrypted_key_size, auth_tok->session_key.decrypted_key);
 	rc = ecryptfs_cipher_code_to_string(crypt_stat->cipher, cipher_code);
 	if (rc) {
 		ecryptfs_printk(KERN_ERR, "Cipher code [%d] is invalid\n",
@@ -1736,9 +1736,9 @@ decrypt_passphrase_encrypted_session_key(struct ecryptfs_auth_tok *auth_tok,
 	memcpy(crypt_stat->key, auth_tok->session_key.decrypted_key,
 	       auth_tok->session_key.decrypted_key_size);
 
-	//tremb1e
-	printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的EFEK = %*phN\n", (int)auth_tok->session_key.decrypted_key_size, auth_tok->session_key.encrypted_key);
-	printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的FEK = %*phN\n", (int)auth_tok->session_key.decrypted_key_size, auth_tok->session_key.decrypted_key);
+	//tremb1e-printk
+	//printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的EFEK = %*phN\n", (int)auth_tok->session_key.decrypted_key_size, auth_tok->session_key.encrypted_key);
+	//printk(KERN_ERR "在decrypt_passphrase_encrypted_session_key方法中输出的FEK = %*phN\n", (int)auth_tok->session_key.decrypted_key_size, auth_tok->session_key.decrypted_key);
 
 	crypt_stat->flags |= ECRYPTFS_KEY_VALID;
 	if (unlikely(ecryptfs_verbosity > 0)) {

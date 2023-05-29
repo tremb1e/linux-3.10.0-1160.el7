@@ -892,8 +892,8 @@ int ecryptfs_compute_root_iv(struct ecryptfs_crypt_stat *crypt_stat)
 				"MD5 while generating root IV\n");
 		goto out;
 	}
-	//tremb1e
-	printk(KERN_ERR "在ecryptfs_compute_root_iv方法中使用ecryptfs_calculate_md5计算出的IV值dst = %*phN\n", (int)MD5_DIGEST_SIZE, dst);
+	//tremb1e-printk
+	//printk(KERN_ERR "在ecryptfs_compute_root_iv方法中使用ecryptfs_calculate_md5计算出的IV值dst = %*phN\n", (int)MD5_DIGEST_SIZE, dst);
 	memcpy(crypt_stat->root_iv, dst, crypt_stat->iv_bytes);
 out:
 	if (rc) {
@@ -909,7 +909,8 @@ static void ecryptfs_generate_new_key(struct ecryptfs_crypt_stat *crypt_stat)
 	//tremb1e
 	get_fek_from_userspace(crypt_stat->key, crypt_stat->key_size);
 	//get_random_bytes(crypt_stat->key, crypt_stat->key_size);
-	printk(KERN_ERR "在ecryptfs_generate_new_key方法中调用get_fek_from_userspace后,生成的crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
+	//tremb1e-printk
+	//printk(KERN_ERR "在ecryptfs_generate_new_key方法中调用get_fek_from_userspace后,生成的crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
 
 
 	crypt_stat->flags |= ECRYPTFS_KEY_VALID;
@@ -1045,7 +1046,7 @@ int ecryptfs_new_file_context(struct inode *ecryptfs_inode)
 	crypt_stat->cipher[cipher_name_len] = '\0';
 	crypt_stat->key_size =
 		mount_crypt_stat->global_default_cipher_key_size;
-	printk(KERN_ERR "在ecryptfs_new_file_context方法中调用ecryptfs_generate_new_key\n");//tremb1e
+	//printk(KERN_ERR "在ecryptfs_new_file_context方法中调用ecryptfs_generate_new_key\n");//tremb1e-printk
 	ecryptfs_generate_new_key(crypt_stat);
 	rc = ecryptfs_init_crypt_ctx(crypt_stat);
 	if (rc)
@@ -1328,8 +1329,8 @@ static int ecryptfs_write_headers_virt(char *page_virt, size_t max,
 		offset += written;
 		*size = offset;
 	}
-	//tremb1e
-	printk(KERN_ERR "在ecryptfs_write_headers_virt方法中调用ecryptfs_generate_key_packet_set后,page_virt中的值 = %*phN\n", (int)max, page_virt);
+	//tremb1e-printk
+	//printk(KERN_ERR "在ecryptfs_write_headers_virt方法中调用ecryptfs_generate_key_packet_set后,page_virt中的值 = %*phN\n", (int)max, page_virt);
 	return rc;
 }
 
@@ -1338,13 +1339,13 @@ ecryptfs_write_metadata_to_contents(struct inode *ecryptfs_inode,
 				    char *virt, size_t virt_len)
 {
 	int rc;
-	struct ecryptfs_crypt_stat *crypt_stat =&ecryptfs_inode_to_private(ecryptfs_inode)->crypt_stat;//tremb1e
+	//struct ecryptfs_crypt_stat *crypt_stat =&ecryptfs_inode_to_private(ecryptfs_inode)->crypt_stat;//tremb1e 和下面的输出是一体的
 
 	rc = ecryptfs_write_lower(ecryptfs_inode, virt,
 				  0, virt_len);
 	
-	//tremb1e
-	printk(KERN_ERR "在ecryptfs_write_metadata_to_contents方法中调用ecryptfs_write_lower后,写入的crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
+	//tremb1e-printk
+	//printk(KERN_ERR "在ecryptfs_write_metadata_to_contents方法中调用ecryptfs_write_lower后,写入的crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
 
 	if (rc < 0)
 		printk(KERN_ERR "%s: Error attempting to write header "

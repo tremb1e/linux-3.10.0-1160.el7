@@ -240,7 +240,7 @@ int ecryptfs_initialize_file(struct dentry *ecryptfs_dentry,
 		goto out;
 	}
 	ecryptfs_printk(KERN_DEBUG, "Initializing crypto context\n");
-	printk(KERN_ERR "在ecryptfs_initialize_file方法中调用ecryptfs_new_file_context\n");//tremb1e
+	//printk(KERN_ERR "在ecryptfs_initialize_file方法中调用ecryptfs_new_file_context\n");//tremb1e-printk
 	rc = ecryptfs_new_file_context(ecryptfs_inode);
 	if (rc) {
 		ecryptfs_printk(KERN_ERR, "Error creating new file "
@@ -311,12 +311,12 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
 	}
 	/* At this point, a file exists on "disk"; we need to make sure
 	 * that this on disk file is prepared to be an ecryptfs file */
-	printk(KERN_ERR "在ecryptfs_create方法中调用ecryptfs_initialize_file\n");//tremb1e
+	//printk(KERN_ERR "在ecryptfs_create方法中调用ecryptfs_initialize_file\n");//tremb1e-printk
 	rc = ecryptfs_initialize_file(ecryptfs_dentry, ecryptfs_inode);
 
 	//crypt_stat = &ecryptfs_inode_to_private(ecryptfs_inode)->crypt_stat;//tremb1e
 	// 输出struct ecryptfs_crypt_stat结构体的所有成员变量的值
-	printk(KERN_ERR "输出struct ecryptfs_crypt_stat结构体的所有成员变量的值");
+	//printk(KERN_ERR "输出struct ecryptfs_crypt_stat结构体的所有成员变量的值");//tremb1e-printk
     //print_ecryptfs_crypt_stat(crypt_stat);
 
 	if (rc) {
@@ -327,7 +327,7 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
 		iput(ecryptfs_inode);
 		goto out;
 	}
-	//tremb1e
+	//tremb1e-printk
 	//printk(KERN_ERR "FEK = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
 
 	unlock_new_inode(ecryptfs_inode);
