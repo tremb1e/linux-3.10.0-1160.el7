@@ -383,7 +383,7 @@ ecryptfs_miscdev_write(struct file *file, const char __user *buf,
 	unsigned char packet_size_peek[ECRYPTFS_MAX_PKT_LEN_SIZE];
 	ssize_t rc;
 
-	printk(KERN_ERR "count = %zu", count);
+	//printk(KERN_ERR "count = %zu", count);//tremb1e-printk
 	if (count == 0) {
 		return 0;
 	} else if (count == MIN_NON_MSG_PKT_SIZE) {
@@ -420,7 +420,7 @@ ecryptfs_miscdev_write(struct file *file, const char __user *buf,
 
 memdup:
 	data = memdup_user(buf, count);
-	printk(KERN_ERR "ecryptfs_miscdev_write中的buf = %*phN", (int)count, data);
+	//printk(KERN_ERR "ecryptfs_miscdev_write中的buf = %*phN", (int)count, data);
 	if (IS_ERR(data)) {
 		printk(KERN_ERR "%s: memdup_user returned error [%ld]\n",
 		       __func__, PTR_ERR(data));

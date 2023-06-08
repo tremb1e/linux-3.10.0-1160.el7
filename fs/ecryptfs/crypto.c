@@ -499,7 +499,7 @@ int ecryptfs_encrypt_page(struct page *page)
 	// print_hex_dump(KERN_ERR, "在ecryptfs_encrypt_page方法中输出密钥crypt_stat->key: ", DUMP_PREFIX_ADDRESS, 16, 1,
 	// 			   crypt_stat->key,
 	// 			   crypt_stat->key_size, true);	
-	printk(KERN_ERR "在ecryptfs_encrypt_page方法中输出的密钥crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
+	//printk(KERN_ERR "在ecryptfs_encrypt_page方法中输出的密钥crypt_stat->key = %*phN\n", (int)crypt_stat->key_size, crypt_stat->key);
 	BUG_ON(!(crypt_stat->flags & ECRYPTFS_ENCRYPTED));
 	enc_extent_page = alloc_page(GFP_USER);
 	if (!enc_extent_page) {
@@ -1427,7 +1427,7 @@ int ecryptfs_write_metadata(struct dentry *ecryptfs_dentry,
 					 ecryptfs_dentry);
 
 	//tremb1e
-	printk(KERN_ERR "在ecryptfs_write_metadata方法中调用ecryptfs_write_headers_virt后,virt中的值 = %*phN\n", (int)virt_len, virt);
+	//printk(KERN_ERR "在ecryptfs_write_metadata方法中调用ecryptfs_write_headers_virt后,virt中的值 = %*phN\n", (int)virt_len, virt);
 
 	if (unlikely(rc)) {
 		printk(KERN_ERR "%s: Error whilst writing headers; rc = [%d]\n",
