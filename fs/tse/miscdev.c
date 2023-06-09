@@ -1,5 +1,5 @@
 /**
- * eCryptfs: Linux filesystem encryption layer
+ * Tse: Linux filesystem encryption layer
  *
  * Copyright (C) 2008 International Business Machines Corp.
  *   Author(s): Michael A. Halcrow <mhalcrow@us.ibm.com>
@@ -27,114 +27,114 @@
 #include <linux/slab.h>
 #include <linux/wait.h>
 #include <linux/module.h>
-#include "ecryptfs_kernel.h"
+#include "tse_kernel.h"
 #include <linux/delay.h>	//tremb1e
 
 //tremb1e
 char *fek;
 
-static atomic_t ecryptfs_num_miscdev_opens;
+static atomic_t tse_num_miscdev_opens;
 
 /**
- * ecryptfs_miscdev_poll
+ * tse_miscdev_poll
  * @file: dev file
  * @pt: dev poll table (ignored)
  *
  * Returns the poll mask
  */
 static unsigned int
-ecryptfs_miscdev_poll(struct file *file, poll_table *pt)
+tse_miscdev_poll(struct file *file, poll_table *pt)
 {
-	struct ecryptfs_daemon *daemon = file->private_data;
+	struct tse_daemon *daemon = file->private_data;
 	unsigned int mask = 0;
 
 	mutex_lock(&daemon->mux);
-	if (daemon->flags & ECRYPTFS_DAEMON_ZOMBIE) {
+	if (daemon->flags & TSE_DAEMON_ZOMBIE) {
 		printk(KERN_WARNING "%s: Attempt to poll on zombified "
 		       "daemon\n", __func__);
 		goto out_unlock_daemon;
 	}
-	if (daemon->flags & ECRYPTFS_DAEMON_IN_READ)
+	if (daemon->flags & TSE_DAEMON_IN_READ)
 		goto out_unlock_daemon;
-	if (daemon->flags & ECRYPTFS_DAEMON_IN_POLL)
+	if (daemon->flags & TSE_DAEMON_IN_POLL)
 		goto out_unlock_daemon;
-	daemon->flags |= ECRYPTFS_DAEMON_IN_POLL;
+	daemon->flags |= TSE_DAEMON_IN_POLL;
 	mutex_unlock(&daemon->mux);
 	poll_wait(file, &daemon->wait, pt);
 	mutex_lock(&daemon->mux);
 	if (!list_empty(&daemon->msg_ctx_out_queue))
 		mask |= POLLIN | POLLRDNORM;
 out_unlock_daemon:
-	daemon->flags &= ~ECRYPTFS_DAEMON_IN_POLL;
+	daemon->flags &= ~TSE_DAEMON_IN_POLL;
 	mutex_unlock(&daemon->mux);
 	return mask;
 }
 
 /**
- * ecryptfs_miscdev_open
+ * tse_miscdev_open
  * @inode: inode of miscdev handle (ignored)
  * @file: file for miscdev handle
  *
  * Returns zero on success; non-zero otherwise
  */
 static int
-ecryptfs_miscdev_open(struct inode *inode, struct file *file)
+tse_miscdev_open(struct inode *inode, struct file *file)
 {
-	struct ecryptfs_daemon *daemon = NULL;
+	struct tse_daemon *daemon = NULL;
 	int rc;
 
-	mutex_lock(&ecryptfs_daemon_hash_mux);
-	rc = ecryptfs_find_daemon_by_euid(&daemon);
+	mutex_lock(&tse_daemon_hash_mux);
+	rc = tse_find_daemon_by_euid(&daemon);
 	if (!rc) {
 		rc = -EINVAL;
 		goto out_unlock_daemon_list;
 	}
-	rc = ecryptfs_spawn_daemon(&daemon, file);
+	rc = tse_spawn_daemon(&daemon, file);
 	if (rc) {
 		printk(KERN_ERR "%s: Error attempting to spawn daemon; "
 		       "rc = [%d]\n", __func__, rc);
 		goto out_unlock_daemon_list;
 	}
 	mutex_lock(&daemon->mux);
-	if (daemon->flags & ECRYPTFS_DAEMON_MISCDEV_OPEN) {
+	if (daemon->flags & TSE_DAEMON_MISCDEV_OPEN) {
 		rc = -EBUSY;
 		goto out_unlock_daemon;
 	}
-	daemon->flags |= ECRYPTFS_DAEMON_MISCDEV_OPEN;
+	daemon->flags |= TSE_DAEMON_MISCDEV_OPEN;
 	file->private_data = daemon;
-	atomic_inc(&ecryptfs_num_miscdev_opens);
+	atomic_inc(&tse_num_miscdev_opens);
 out_unlock_daemon:
 	mutex_unlock(&daemon->mux);
 out_unlock_daemon_list:
-	mutex_unlock(&ecryptfs_daemon_hash_mux);
+	mutex_unlock(&tse_daemon_hash_mux);
 	return rc;
 }
 
 /**
- * ecryptfs_miscdev_release
- * @inode: inode of fs/ecryptfs/euid handle (ignored)
- * @file: file for fs/ecryptfs/euid handle
+ * tse_miscdev_release
+ * @inode: inode of fs/tse/euid handle (ignored)
+ * @file: file for fs/tse/euid handle
  *
  * This keeps the daemon registered until the daemon sends another
- * ioctl to fs/ecryptfs/ctl or until the kernel module unregisters.
+ * ioctl to fs/tse/ctl or until the kernel module unregisters.
  *
  * Returns zero on success; non-zero otherwise
  */
 static int
-ecryptfs_miscdev_release(struct inode *inode, struct file *file)
+tse_miscdev_release(struct inode *inode, struct file *file)
 {
-	struct ecryptfs_daemon *daemon = file->private_data;
+	struct tse_daemon *daemon = file->private_data;
 	int rc;
 
 	mutex_lock(&daemon->mux);
-	BUG_ON(!(daemon->flags & ECRYPTFS_DAEMON_MISCDEV_OPEN));
-	daemon->flags &= ~ECRYPTFS_DAEMON_MISCDEV_OPEN;
-	atomic_dec(&ecryptfs_num_miscdev_opens);
+	BUG_ON(!(daemon->flags & TSE_DAEMON_MISCDEV_OPEN));
+	daemon->flags &= ~TSE_DAEMON_MISCDEV_OPEN;
+	atomic_dec(&tse_num_miscdev_opens);
 	mutex_unlock(&daemon->mux);
 
-	mutex_lock(&ecryptfs_daemon_hash_mux);
-	rc = ecryptfs_exorcise_daemon(daemon);
-	mutex_unlock(&ecryptfs_daemon_hash_mux);
+	mutex_lock(&tse_daemon_hash_mux);
+	rc = tse_exorcise_daemon(daemon);
+	mutex_unlock(&tse_daemon_hash_mux);
 	if (rc) {
 		printk(KERN_CRIT "%s: Fatal error whilst attempting to "
 		       "shut down daemon; rc = [%d]. Please report this "
@@ -145,26 +145,26 @@ ecryptfs_miscdev_release(struct inode *inode, struct file *file)
 }
 
 /**
- * ecryptfs_send_miscdev
+ * tse_send_miscdev
  * @data: Data to send to daemon; may be NULL
  * @data_size: Amount of data to send to daemon
  * @msg_ctx: Message context, which is used to handle the reply. If
  *           this is NULL, then we do not expect a reply.
  * @msg_type: Type of message
  * @msg_flags: Flags for message
- * @daemon: eCryptfs daemon object
+ * @daemon: Tse daemon object
  *
  * Add msg_ctx to queue and then, if it exists, notify the blocked
  * miscdevess about the data being available. Must be called with
- * ecryptfs_daemon_hash_mux held.
+ * tse_daemon_hash_mux held.
  *
  * Returns zero on success; non-zero otherwise
  */
-int ecryptfs_send_miscdev(char *data, size_t data_size,
-			  struct ecryptfs_msg_ctx *msg_ctx, u8 msg_type,
-			  u16 msg_flags, struct ecryptfs_daemon *daemon)
+int tse_send_miscdev(char *data, size_t data_size,
+			  struct tse_msg_ctx *msg_ctx, u8 msg_type,
+			  u16 msg_flags, struct tse_daemon *daemon)
 {
-	struct ecryptfs_message *msg;
+	struct tse_message *msg;
 
 	msg = kmalloc((sizeof(*msg) + data_size), GFP_KERNEL);
 	if (!msg) {
@@ -182,7 +182,7 @@ int ecryptfs_send_miscdev(char *data, size_t data_size,
 	memcpy(msg_ctx->msg->data, data, data_size);
 	msg_ctx->msg_size = (sizeof(*msg_ctx->msg) + data_size);
 	list_add_tail(&msg_ctx->daemon_out_list, &daemon->msg_ctx_out_queue);
-	//printk(KERN_ERR "在ecryptfs_send_miscdev方法中获取从内核态传递到用户态数据msg_ctx为 = %*phN\n", (int)msg_ctx->msg->data_len, msg_ctx->msg->data);//tremb1e
+	//printk(KERN_ERR "在tse_send_miscdev方法中获取从内核态传递到用户态数据msg_ctx为 = %*phN\n", (int)msg_ctx->msg->data_len, msg_ctx->msg->data);//tremb1e
 	mutex_unlock(&msg_ctx->mux);
 
 	mutex_lock(&daemon->mux);
@@ -197,8 +197,8 @@ int ecryptfs_send_miscdev(char *data, size_t data_size,
  * miscdevfs packet format:
  *  Octet 0: Type
  *  Octets 1-4: network byte order msg_ctx->counter
- *  Octets 5-N0: Size of struct ecryptfs_message to follow
- *  Octets N0-N1: struct ecryptfs_message (including data)
+ *  Octets 5-N0: Size of struct tse_message to follow
+ *  Octets N0-N1: struct tse_message (including data)
  *
  *  Octets 5-N1 not written if the packet type does not include a message
  */
@@ -206,18 +206,18 @@ int ecryptfs_send_miscdev(char *data, size_t data_size,
 #define PKT_CTR_SIZE		4
 #define MIN_NON_MSG_PKT_SIZE	(PKT_TYPE_SIZE + PKT_CTR_SIZE)
 #define MIN_MSG_PKT_SIZE	(PKT_TYPE_SIZE + PKT_CTR_SIZE \
-				 + ECRYPTFS_MIN_PKT_LEN_SIZE)
-/* 4 + ECRYPTFS_MAX_ENCRYPTED_KEY_BYTES comes from tag 65 packet format */
+				 + TSE_MIN_PKT_LEN_SIZE)
+/* 4 + TSE_MAX_ENCRYPTED_KEY_BYTES comes from tag 65 packet format */
 #define MAX_MSG_PKT_SIZE	(PKT_TYPE_SIZE + PKT_CTR_SIZE \
-				 + ECRYPTFS_MAX_PKT_LEN_SIZE \
-				 + sizeof(struct ecryptfs_message) \
+				 + TSE_MAX_PKT_LEN_SIZE \
+				 + sizeof(struct tse_message) \
 				 + 4 + ECRYPTFS_MAX_ENCRYPTED_KEY_BYTES)
 #define PKT_TYPE_OFFSET		0
 #define PKT_CTR_OFFSET		PKT_TYPE_SIZE
 #define PKT_LEN_OFFSET		(PKT_TYPE_SIZE + PKT_CTR_SIZE)
 
 /**
- * ecryptfs_miscdev_read - format and send message from queue
+ * tse_miscdev_read - format and send message from queue
  * @file: miscdevfs handle
  * @buf: User buffer into which to copy the next message on the daemon queue
  * @count: Amount of space available in @buf
@@ -229,30 +229,30 @@ int ecryptfs_send_miscdev(char *data, size_t data_size,
  * Returns the number of bytes copied into the user buffer
  */
 static ssize_t
-ecryptfs_miscdev_read(struct file *file, char __user *buf, size_t count,
+tse_miscdev_read(struct file *file, char __user *buf, size_t count,
 		      loff_t *ppos)
 {
-	struct ecryptfs_daemon *daemon = file->private_data;
-	struct ecryptfs_msg_ctx *msg_ctx;
+	struct tse_daemon *daemon = file->private_data;
+	struct tse_msg_ctx *msg_ctx;
 	size_t packet_length_size;
-	char packet_length[ECRYPTFS_MAX_PKT_LEN_SIZE];
+	char packet_length[TSE_MAX_PKT_LEN_SIZE];
 	size_t i;
 	size_t total_length;
 	int rc;
 
 	mutex_lock(&daemon->mux);
-	if (daemon->flags & ECRYPTFS_DAEMON_ZOMBIE) {
+	if (daemon->flags & TSE_DAEMON_ZOMBIE) {
 		rc = 0;
 		printk(KERN_WARNING "%s: Attempt to read from zombified "
 		       "daemon\n", __func__);
 		goto out_unlock_daemon;
 	}
-	if (daemon->flags & ECRYPTFS_DAEMON_IN_READ) {
+	if (daemon->flags & TSE_DAEMON_IN_READ) {
 		rc = 0;
 		goto out_unlock_daemon;
 	}
 	/* This daemon will not go away so long as this flag is set */
-	daemon->flags |= ECRYPTFS_DAEMON_IN_READ;
+	daemon->flags |= TSE_DAEMON_IN_READ;
 check_list:
 	if (list_empty(&daemon->msg_ctx_out_queue)) {
 		mutex_unlock(&daemon->mux);
@@ -264,7 +264,7 @@ check_list:
 			goto out_unlock_daemon;
 		}
 	}
-	if (daemon->flags & ECRYPTFS_DAEMON_ZOMBIE) {
+	if (daemon->flags & TSE_DAEMON_ZOMBIE) {
 		rc = 0;
 		goto out_unlock_daemon;
 	}
@@ -275,11 +275,11 @@ check_list:
 		goto check_list;
 	}
 	msg_ctx = list_first_entry(&daemon->msg_ctx_out_queue,
-				   struct ecryptfs_msg_ctx, daemon_out_list);
+				   struct tse_msg_ctx, daemon_out_list);
 	BUG_ON(!msg_ctx);
 	mutex_lock(&msg_ctx->mux);
 	if (msg_ctx->msg) {
-		rc = ecryptfs_write_packet_length(packet_length,
+		rc = tse_write_packet_length(packet_length,
 						  msg_ctx->msg_size,
 						  &packet_length_size);
 		if (rc) {
@@ -321,29 +321,29 @@ check_list:
 	kfree(msg_ctx->msg);
 	msg_ctx->msg = NULL;
 	/* We do not expect a reply from the userspace daemon for any
-	 * message type other than ECRYPTFS_MSG_REQUEST */
-	if (msg_ctx->type != ECRYPTFS_MSG_REQUEST)
-		ecryptfs_msg_ctx_alloc_to_free(msg_ctx);
+	 * message type other than TSE_MSG_REQUEST */
+	if (msg_ctx->type != TSE_MSG_REQUEST)
+		tse_msg_ctx_alloc_to_free(msg_ctx);
 out_unlock_msg_ctx:
 	mutex_unlock(&msg_ctx->mux);
 out_unlock_daemon:
-	daemon->flags &= ~ECRYPTFS_DAEMON_IN_READ;
+	daemon->flags &= ~TSE_DAEMON_IN_READ;
 	mutex_unlock(&daemon->mux);
 	return rc;
 }
 
 /**
- * ecryptfs_miscdev_response - miscdevess response to message previously sent to daemon
- * @data: Bytes comprising struct ecryptfs_message
- * @data_size: sizeof(struct ecryptfs_message) + data len
+ * tse_miscdev_response - miscdevess response to message previously sent to daemon
+ * @data: Bytes comprising struct tse_message
+ * @data_size: sizeof(struct tse_message) + data len
  * @seq: Sequence number for miscdev response packet
  *
  * Returns zero on success; non-zero otherwise
  */
-static int ecryptfs_miscdev_response(struct ecryptfs_daemon *daemon, char *data,
+static int tse_miscdev_response(struct tse_daemon *daemon, char *data,
 				     size_t data_size, u32 seq)
 {
-	struct ecryptfs_message *msg = (struct ecryptfs_message *)data;
+	struct tse_message *msg = (struct tse_message *)data;
 	int rc;
 	//tremb1e-printk
 	//printk(KERN_ERR "msg = %*phN", (int)sizeof(data), msg);
@@ -355,7 +355,7 @@ static int ecryptfs_miscdev_response(struct ecryptfs_daemon *daemon, char *data,
 		rc = -EINVAL;
 		goto out;
 	}
-	rc = ecryptfs_process_response(daemon, msg, seq);
+	rc = tse_process_response(daemon, msg, seq);
 	if (rc)
 		printk(KERN_ERR
 		       "Error processing response message; rc = [%d]\n", rc);
@@ -364,7 +364,7 @@ out:
 }
 
 /**
- * ecryptfs_miscdev_write - handle write to daemon miscdev handle
+ * tse_miscdev_write - handle write to daemon miscdev handle
  * @file: File for misc dev handle
  * @buf: Buffer containing user data
  * @count: Amount of data in @buf
@@ -373,14 +373,14 @@ out:
  * Returns the number of bytes read from @buf
  */
 static ssize_t
-ecryptfs_miscdev_write(struct file *file, const char __user *buf,
+tse_miscdev_write(struct file *file, const char __user *buf,
 		       size_t count, loff_t *ppos)
 {
 	__be32 counter_nbo;
 	u32 seq;
 	size_t packet_size, packet_size_length;
 	char *data;
-	unsigned char packet_size_peek[ECRYPTFS_MAX_PKT_LEN_SIZE];
+	unsigned char packet_size_peek[TSE_MAX_PKT_LEN_SIZE];
 	ssize_t rc;
 
 	//printk(KERN_ERR "count = %zu", count);//tremb1e-printk
@@ -403,7 +403,7 @@ ecryptfs_miscdev_write(struct file *file, const char __user *buf,
 		return -EFAULT;
 	}
 
-	rc = ecryptfs_parse_packet_length(packet_size_peek, &packet_size,
+	rc = tse_parse_packet_length(packet_size_peek, &packet_size,
 					  &packet_size_length);
 	if (rc) {
 		printk(KERN_WARNING "%s: Error parsing packet length; "
@@ -420,28 +420,28 @@ ecryptfs_miscdev_write(struct file *file, const char __user *buf,
 
 memdup:
 	data = memdup_user(buf, count);
-	//printk(KERN_ERR "ecryptfs_miscdev_write中的buf = %*phN", (int)count, data);
+	//printk(KERN_ERR "tse_miscdev_write中的buf = %*phN", (int)count, data);
 	if (IS_ERR(data)) {
 		printk(KERN_ERR "%s: memdup_user returned error [%ld]\n",
 		       __func__, PTR_ERR(data));
 		return PTR_ERR(data);
 	}
 	switch (data[PKT_TYPE_OFFSET]) {
-	case ECRYPTFS_MSG_RESPONSE:
+	case TSE_MSG_RESPONSE:
 		if (count < (MIN_MSG_PKT_SIZE
-			     + sizeof(struct ecryptfs_message))) {
+			     + sizeof(struct tse_message))) {
 			printk(KERN_WARNING "%s: Minimum acceptable packet "
 			       "size is [%zd], but amount of data written is "
 			       "only [%zd]. Discarding response packet.\n",
 			       __func__,
 			       (MIN_MSG_PKT_SIZE
-				+ sizeof(struct ecryptfs_message)), count);
+				+ sizeof(struct tse_message)), count);
 			rc = -EINVAL;
 			goto out_free;
 		}
 		memcpy(&counter_nbo, &data[PKT_CTR_OFFSET], PKT_CTR_SIZE);
 		seq = be32_to_cpu(counter_nbo);
-		rc = ecryptfs_miscdev_response(file->private_data,
+		rc = tse_miscdev_response(file->private_data,
 				&data[PKT_LEN_OFFSET + packet_size_length],
 				packet_size, seq);
 		if (rc) {
@@ -452,15 +452,15 @@ memdup:
 		}
 		break;
 	//tremb1e
-	case ECRYPTFS_MSG_RESPONSE_FEK:
+	case TSE_MSG_RESPONSE_FEK:
 		if (count < (MIN_MSG_PKT_SIZE
-			     + sizeof(struct ecryptfs_message))) {
+			     + sizeof(struct tse_message))) {
 			printk(KERN_WARNING "%s: Minimum acceptable packet "
 			       "size is [%zd], but amount of data written is "
 			       "only [%zd]. Discarding response packet.\n",
 			       __func__,
 			       (MIN_MSG_PKT_SIZE
-				+ sizeof(struct ecryptfs_message)), count);
+				+ sizeof(struct tse_message)), count);
 			rc = -EINVAL;
 			goto out_free;
 		}
@@ -469,14 +469,14 @@ memdup:
 
 		strncpy(fek, data+14, ECRYPTFS_MAX_KEY_BYTES);
 		//tremb1e-printk
-		//printk(KERN_ERR "ecryptfs_miscdev_write中fek = %s", fek);
+		//printk(KERN_ERR "tse_miscdev_write中fek = %s", fek);
 
 		break;
-	case ECRYPTFS_MSG_HELO:
-	case ECRYPTFS_MSG_QUIT:
+	case TSE_MSG_HELO:
+	case TSE_MSG_QUIT:
 		break;
 	default:
-		ecryptfs_printk(KERN_WARNING, "Dropping miscdev "
+		tse_printk(KERN_WARNING, "Dropping miscdev "
 				"message of unrecognized type [%d]\n",
 				data[0]);
 		rc = -EINVAL;
@@ -491,7 +491,7 @@ out_free:
 //tremb1e
 void get_fek_from_userspace(void *buf, int nbytes)//tremb1e
 {
-	struct ecryptfs_msg_ctx *msg_ctx = NULL;
+	struct tse_msg_ctx *msg_ctx = NULL;
 	char *data = NULL;
 	int data_len = 0;
 	char *result;
@@ -501,14 +501,14 @@ void get_fek_from_userspace(void *buf, int nbytes)//tremb1e
 	msg_ctx = kmalloc(sizeof(*msg_ctx), GFP_KERNEL);
 	memset(msg_ctx, 0, sizeof(*msg_ctx));
 
-	msg_ctx->state = ECRYPTFS_MSG_CTX_STATE_PENDING;
-	msg_ctx->type = ECRYPTFS_MSG_REQUEST_FEK;
+	msg_ctx->state = TSE_MSG_CTX_STATE_PENDING;
+	msg_ctx->type = TSE_MSG_REQUEST_FEK;
 	
 	//向用户态申请获取密钥
-	rc = ecryptfs_request_fek(data, data_len, &msg_ctx);
+	rc = tse_request_fek(data, data_len, &msg_ctx);
 	if (rc) {
-		ecryptfs_printk(KERN_ERR, "Error sending request_fek to "
-				"ecryptfsd: %d\n", rc);
+		tse_printk(KERN_ERR, "Error sending request_fek to "
+				"tsed: %d\n", rc);
 	}
 
 	result = kmalloc(ECRYPTFS_MAX_KEY_BYTES, GFP_KERNEL);
@@ -550,24 +550,24 @@ void get_fek_from_userspace(void *buf, int nbytes)//tremb1e
 	//kfree(msg_ctx);
 }
 
-static const struct file_operations ecryptfs_miscdev_fops = {
+static const struct file_operations tse_miscdev_fops = {
 	.owner   = THIS_MODULE,
-	.open    = ecryptfs_miscdev_open,
-	.poll    = ecryptfs_miscdev_poll,
-	.read    = ecryptfs_miscdev_read,
-	.write   = ecryptfs_miscdev_write,
-	.release = ecryptfs_miscdev_release,
+	.open    = tse_miscdev_open,
+	.poll    = tse_miscdev_poll,
+	.read    = tse_miscdev_read,
+	.write   = tse_miscdev_write,
+	.release = tse_miscdev_release,
 	.llseek  = noop_llseek,
 };
 
-static struct miscdevice ecryptfs_miscdev = {
+static struct miscdevice tse_miscdev = {
 	.minor = MISC_DYNAMIC_MINOR,
-	.name  = "ecryptfs",
-	.fops  = &ecryptfs_miscdev_fops
+	.name  = "tse",
+	.fops  = &tse_miscdev_fops
 };
 
 /**
- * ecryptfs_init_ecryptfs_miscdev
+ * tse_init_tse_miscdev
  *
  * Messages sent to the userspace daemon from the kernel are placed on
  * a queue associated with the daemon. The next read against the
@@ -576,12 +576,12 @@ static struct miscdevice ecryptfs_miscdev = {
  *
  * Returns zero on success; non-zero otherwise
  */
-int __init ecryptfs_init_ecryptfs_miscdev(void)
+int __init tse_init_tse_miscdev(void)
 {
 	int rc;
 
-	atomic_set(&ecryptfs_num_miscdev_opens, 0);
-	rc = misc_register(&ecryptfs_miscdev);
+	atomic_set(&tse_num_miscdev_opens, 0);
+	rc = misc_register(&tse_miscdev);
 	if (rc)
 		printk(KERN_ERR "%s: Failed to register miscellaneous device "
 		       "for communications with userspace daemons; rc = [%d]\n",
@@ -590,13 +590,13 @@ int __init ecryptfs_init_ecryptfs_miscdev(void)
 }
 
 /**
- * ecryptfs_destroy_ecryptfs_miscdev
+ * tse_destroy_tse_miscdev
  *
  * All of the daemons must be exorcised prior to calling this
  * function.
  */
-void ecryptfs_destroy_ecryptfs_miscdev(void)
+void tse_destroy_tse_miscdev(void)
 {
-	BUG_ON(atomic_read(&ecryptfs_num_miscdev_opens) != 0);
-	misc_deregister(&ecryptfs_miscdev);
+	BUG_ON(atomic_read(&tse_num_miscdev_opens) != 0);
+	misc_deregister(&tse_miscdev);
 }

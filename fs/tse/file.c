@@ -1,5 +1,5 @@
 /**
- * eCryptfs: Linux filesystem encryption layer
+ * Tse: Linux filesystem encryption layer
  *
  * Copyright (C) 1997-2004 Erez Zadok
  * Copyright (C) 2001-2004 Stony Brook University
@@ -32,19 +32,19 @@
 #include <linux/compat.h>
 #include <linux/fs_stack.h>
 #include <linux/aio.h>
-#include "ecryptfs_kernel.h"
+#include "tse_kernel.h"
 
 /**
- * ecryptfs_read_update_atime
+ * tse_read_update_atime
  *
  * generic_file_read updates the atime of upper layer inode.  But, it
  * doesn't give us a chance to update the atime of the lower layer
  * inode.  This function is a wrapper to generic_file_read.  It
  * updates the atime of the lower level inode if generic_file_read
  * returns without any errors. This is to be used only for file reads.
- * The function to be used for directory reads is ecryptfs_read.
+ * The function to be used for directory reads is tse_read.
  */
-static ssize_t ecryptfs_read_update_atime(struct kiocb *iocb,
+static ssize_t tse_read_update_atime(struct kiocb *iocb,
 				const struct iovec *iov,
 				unsigned long nr_segs, loff_t pos)
 {
@@ -60,14 +60,14 @@ static ssize_t ecryptfs_read_update_atime(struct kiocb *iocb,
 	if (-EIOCBQUEUED == rc)
 		rc = wait_on_sync_kiocb(iocb);
 	if (rc >= 0) {
-		lower.dentry = ecryptfs_dentry_to_lower(file->f_path.dentry);
-		lower.mnt = ecryptfs_dentry_to_lower_mnt(file->f_path.dentry);
+		lower.dentry = tse_dentry_to_lower(file->f_path.dentry);
+		lower.mnt = tse_dentry_to_lower_mnt(file->f_path.dentry);
 		touch_atime(&lower);
 	}
 	return rc;
 }
 
-struct ecryptfs_getdents_callback {
+struct tse_getdents_callback {
 	struct dir_context ctx;
 	void *dirent;
 	struct dentry *dentry;
@@ -78,17 +78,17 @@ struct ecryptfs_getdents_callback {
 
 /* Inspired by generic filldir in fs/readdir.c */
 static int
-ecryptfs_filldir(void *dirent, const char *lower_name, int lower_namelen,
+tse_filldir(void *dirent, const char *lower_name, int lower_namelen,
 		 loff_t offset, u64 ino, unsigned int d_type)
 {
-	struct ecryptfs_getdents_callback *buf =
-	    (struct ecryptfs_getdents_callback *)dirent;
+	struct tse_getdents_callback *buf =
+	    (struct tse_getdents_callback *)dirent;
 	size_t name_size;
 	char *name;
 	int rc;
 
 	buf->filldir_called++;
-	rc = ecryptfs_decode_and_decrypt_filename(&name, &name_size,
+	rc = tse_decode_and_decrypt_filename(&name, &name_size,
 						  buf->dentry, lower_name,
 						  lower_namelen);
 	if (rc) {
@@ -106,19 +106,19 @@ out:
 }
 
 /**
- * ecryptfs_readdir
- * @file: The eCryptfs directory file
+ * tse_readdir
+ * @file: The Tse directory file
  * @dirent: Directory entry handle
  * @filldir: The filldir callback function
  */
-static int ecryptfs_readdir(struct file *file, void *dirent, filldir_t filldir)
+static int tse_readdir(struct file *file, void *dirent, filldir_t filldir)
 {
 	int rc;
 	struct file *lower_file;
 	struct inode *inode;
-	struct ecryptfs_getdents_callback buf;
+	struct tse_getdents_callback buf;
 
-	lower_file = ecryptfs_file_to_lower(file);
+	lower_file = tse_file_to_lower(file);
 	lower_file->f_pos = file->f_pos;
 	inode = file_inode(file);
 	memset(&buf, 0, sizeof(buf));
@@ -127,7 +127,7 @@ static int ecryptfs_readdir(struct file *file, void *dirent, filldir_t filldir)
 	buf.filldir = filldir;
 	buf.filldir_called = 0;
 	buf.entries_written = 0;
-	buf.ctx.actor = ecryptfs_filldir;
+	buf.ctx.actor = tse_filldir;
 	rc = iterate_dir(lower_file, &buf.ctx);
 	file->f_pos = lower_file->f_pos;
 	if (rc < 0)
@@ -141,41 +141,41 @@ out:
 	return rc;
 }
 
-struct kmem_cache *ecryptfs_file_info_cache;
+struct kmem_cache *tse_file_info_cache;
 
 static int read_or_initialize_metadata(struct dentry *dentry)
 {
 	struct inode *inode = dentry->d_inode;
-	struct ecryptfs_mount_crypt_stat *mount_crypt_stat;
-	struct ecryptfs_crypt_stat *crypt_stat;
+	struct tse_mount_crypt_stat *mount_crypt_stat;
+	struct tse_crypt_stat *crypt_stat;
 	int rc;
 
-	crypt_stat = &ecryptfs_inode_to_private(inode)->crypt_stat;
-	mount_crypt_stat = &ecryptfs_superblock_to_private(
+	crypt_stat = &tse_inode_to_private(inode)->crypt_stat;
+	mount_crypt_stat = &tse_superblock_to_private(
 						inode->i_sb)->mount_crypt_stat;
 	mutex_lock(&crypt_stat->cs_mutex);
 
-	if (crypt_stat->flags & ECRYPTFS_POLICY_APPLIED &&
-	    crypt_stat->flags & ECRYPTFS_KEY_VALID) {
+	if (crypt_stat->flags & TSE_POLICY_APPLIED &&
+	    crypt_stat->flags & TSE_KEY_VALID) {
 		rc = 0;
 		goto out;
 	}
 
-	rc = ecryptfs_read_metadata(dentry);
+	rc = tse_read_metadata(dentry);
 	if (!rc)
 		goto out;
 
-	if (mount_crypt_stat->flags & ECRYPTFS_PLAINTEXT_PASSTHROUGH_ENABLED) {
-		crypt_stat->flags &= ~(ECRYPTFS_I_SIZE_INITIALIZED
-				       | ECRYPTFS_ENCRYPTED);
+	if (mount_crypt_stat->flags & TSE_PLAINTEXT_PASSTHROUGH_ENABLED) {
+		crypt_stat->flags &= ~(TSE_I_SIZE_INITIALIZED
+				       | TSE_ENCRYPTED);
 		rc = 0;
 		goto out;
 	}
 
-	if (!(mount_crypt_stat->flags & ECRYPTFS_XATTR_METADATA_ENABLED) &&
-	    !i_size_read(ecryptfs_inode_to_lower(inode))) {
-		//printk(KERN_ERR "在read_or_initialize_metadata方法中调用ecryptfs_initialize_file\n");//tremb1e-printk
-		rc = ecryptfs_initialize_file(dentry, inode);
+	if (!(mount_crypt_stat->flags & TSE_XATTR_METADATA_ENABLED) &&
+	    !i_size_read(tse_inode_to_lower(inode))) {
+		//printk(KERN_ERR "在read_or_initialize_metadata方法中调用tse_initialize_file\n");//tremb1e-printk
+		rc = tse_initialize_file(dentry, inode);
 		if (!rc)
 			goto out;
 	}
@@ -187,7 +187,7 @@ out:
 }
 
 /**
- * ecryptfs_open
+ * tse_open
  * @inode: inode speciying file to open
  * @file: Structure to return filled in
  *
@@ -195,19 +195,19 @@ out:
  *
  * Returns zero on success; non-zero otherwise
  */
-static int ecryptfs_open(struct inode *inode, struct file *file)
+static int tse_open(struct inode *inode, struct file *file)
 {
 	int rc = 0;
-	struct ecryptfs_crypt_stat *crypt_stat = NULL;
-	struct ecryptfs_mount_crypt_stat *mount_crypt_stat;
-	struct dentry *ecryptfs_dentry = file->f_path.dentry;
-	/* Private value of ecryptfs_dentry allocated in
-	 * ecryptfs_lookup() */
-	struct ecryptfs_file_info *file_info;
+	struct tse_crypt_stat *crypt_stat = NULL;
+	struct tse_mount_crypt_stat *mount_crypt_stat;
+	struct dentry *tse_dentry = file->f_path.dentry;
+	/* Private value of tse_dentry allocated in
+	 * tse_lookup() */
+	struct tse_file_info *file_info;
 
-	mount_crypt_stat = &ecryptfs_superblock_to_private(
-		ecryptfs_dentry->d_sb)->mount_crypt_stat;
-	if ((mount_crypt_stat->flags & ECRYPTFS_ENCRYPTED_VIEW_ENABLED)
+	mount_crypt_stat = &tse_superblock_to_private(
+		tse_dentry->d_sb)->mount_crypt_stat;
+	if ((mount_crypt_stat->flags & TSE_ENCRYPTED_VIEW_ENABLED)
 	    && ((file->f_flags & O_WRONLY) || (file->f_flags & O_RDWR)
 		|| (file->f_flags & O_CREAT) || (file->f_flags & O_TRUNC)
 		|| (file->f_flags & O_APPEND))) {
@@ -216,68 +216,68 @@ static int ecryptfs_open(struct inode *inode, struct file *file)
 		rc = -EPERM;
 		goto out;
 	}
-	/* Released in ecryptfs_release or end of function if failure */
-	file_info = kmem_cache_zalloc(ecryptfs_file_info_cache, GFP_KERNEL);
-	ecryptfs_set_file_private(file, file_info);
+	/* Released in tse_release or end of function if failure */
+	file_info = kmem_cache_zalloc(tse_file_info_cache, GFP_KERNEL);
+	tse_set_file_private(file, file_info);
 	if (!file_info) {
-		ecryptfs_printk(KERN_ERR,
+		tse_printk(KERN_ERR,
 				"Error attempting to allocate memory\n");
 		rc = -ENOMEM;
 		goto out;
 	}
-	crypt_stat = &ecryptfs_inode_to_private(inode)->crypt_stat;
+	crypt_stat = &tse_inode_to_private(inode)->crypt_stat;
 	mutex_lock(&crypt_stat->cs_mutex);
-	if (!(crypt_stat->flags & ECRYPTFS_POLICY_APPLIED)) {
-		ecryptfs_printk(KERN_DEBUG, "Setting flags for stat...\n");
+	if (!(crypt_stat->flags & TSE_POLICY_APPLIED)) {
+		tse_printk(KERN_DEBUG, "Setting flags for stat...\n");
 		/* Policy code enabled in future release */
-		crypt_stat->flags |= (ECRYPTFS_POLICY_APPLIED
-				      | ECRYPTFS_ENCRYPTED);
+		crypt_stat->flags |= (TSE_POLICY_APPLIED
+				      | TSE_ENCRYPTED);
 	}
 	mutex_unlock(&crypt_stat->cs_mutex);
-	rc = ecryptfs_get_lower_file(ecryptfs_dentry, inode);
+	rc = tse_get_lower_file(tse_dentry, inode);
 	if (rc) {
 		printk(KERN_ERR "%s: Error attempting to initialize "
 			"the lower file for the dentry with name "
 			"[%s]; rc = [%d]\n", __func__,
-			ecryptfs_dentry->d_name.name, rc);
+			tse_dentry->d_name.name, rc);
 		goto out_free;
 	}
-	if ((ecryptfs_inode_to_private(inode)->lower_file->f_flags & O_ACCMODE)
+	if ((tse_inode_to_private(inode)->lower_file->f_flags & O_ACCMODE)
 	    == O_RDONLY && (file->f_flags & O_ACCMODE) != O_RDONLY) {
 		rc = -EPERM;
-		printk(KERN_WARNING "%s: Lower file is RO; eCryptfs "
+		printk(KERN_WARNING "%s: Lower file is RO; Tse "
 		       "file must hence be opened RO\n", __func__);
 		goto out_put;
 	}
-	ecryptfs_set_file_lower(
-		file, ecryptfs_inode_to_private(inode)->lower_file);
-	if (S_ISDIR(ecryptfs_dentry->d_inode->i_mode)) {
-		ecryptfs_printk(KERN_DEBUG, "This is a directory\n");
+	tse_set_file_lower(
+		file, tse_inode_to_private(inode)->lower_file);
+	if (S_ISDIR(tse_dentry->d_inode->i_mode)) {
+		tse_printk(KERN_DEBUG, "This is a directory\n");
 		mutex_lock(&crypt_stat->cs_mutex);
-		crypt_stat->flags &= ~(ECRYPTFS_ENCRYPTED);
+		crypt_stat->flags &= ~(TSE_ENCRYPTED);
 		mutex_unlock(&crypt_stat->cs_mutex);
 		rc = 0;
 		goto out;
 	}
-	rc = read_or_initialize_metadata(ecryptfs_dentry);
+	rc = read_or_initialize_metadata(tse_dentry);
 	if (rc)
 		goto out_put;
-	ecryptfs_printk(KERN_DEBUG, "inode w/ addr = [0x%p], i_ino = "
+	tse_printk(KERN_DEBUG, "inode w/ addr = [0x%p], i_ino = "
 			"[0x%.16lx] size: [0x%.16llx]\n", inode, inode->i_ino,
 			(unsigned long long)i_size_read(inode));
 	goto out;
 out_put:
-	ecryptfs_put_lower_file(inode);
+	tse_put_lower_file(inode);
 out_free:
-	kmem_cache_free(ecryptfs_file_info_cache,
-			ecryptfs_file_to_private(file));
+	kmem_cache_free(tse_file_info_cache,
+			tse_file_to_private(file));
 out:
 	return rc;
 }
 
-static int ecryptfs_flush(struct file *file, fl_owner_t td)
+static int tse_flush(struct file *file, fl_owner_t td)
 {
-	struct file *lower_file = ecryptfs_file_to_lower(file);
+	struct file *lower_file = tse_file_to_lower(file);
 
 	if (lower_file->f_op && lower_file->f_op->flush) {
 		filemap_write_and_wait(file->f_mapping);
@@ -287,16 +287,16 @@ static int ecryptfs_flush(struct file *file, fl_owner_t td)
 	return 0;
 }
 
-static int ecryptfs_release(struct inode *inode, struct file *file)
+static int tse_release(struct inode *inode, struct file *file)
 {
-	ecryptfs_put_lower_file(inode);
-	kmem_cache_free(ecryptfs_file_info_cache,
-			ecryptfs_file_to_private(file));
+	tse_put_lower_file(inode);
+	kmem_cache_free(tse_file_info_cache,
+			tse_file_to_private(file));
 	return 0;
 }
 
 static int
-ecryptfs_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+tse_fsync(struct file *file, loff_t start, loff_t end, int datasync)
 {
 	int rc;
 
@@ -304,28 +304,28 @@ ecryptfs_fsync(struct file *file, loff_t start, loff_t end, int datasync)
 	if (rc)
 		return rc;
 
-	return vfs_fsync(ecryptfs_file_to_lower(file), datasync);
+	return vfs_fsync(tse_file_to_lower(file), datasync);
 }
 
-static int ecryptfs_fasync(int fd, struct file *file, int flag)
+static int tse_fasync(int fd, struct file *file, int flag)
 {
 	int rc = 0;
 	struct file *lower_file = NULL;
 
-	lower_file = ecryptfs_file_to_lower(file);
+	lower_file = tse_file_to_lower(file);
 	if (lower_file->f_op && lower_file->f_op->fasync)
 		rc = lower_file->f_op->fasync(fd, lower_file, flag);
 	return rc;
 }
 
 static long
-ecryptfs_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+tse_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct file *lower_file = NULL;
 	long rc = -ENOTTY;
 
-	if (ecryptfs_file_to_private(file))
-		lower_file = ecryptfs_file_to_lower(file);
+	if (tse_file_to_private(file))
+		lower_file = tse_file_to_lower(file);
 	if (lower_file && lower_file->f_op && lower_file->f_op->unlocked_ioctl)
 		rc = lower_file->f_op->unlocked_ioctl(lower_file, cmd, arg);
 	return rc;
@@ -333,51 +333,51 @@ ecryptfs_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 #ifdef CONFIG_COMPAT
 static long
-ecryptfs_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+tse_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct file *lower_file = NULL;
 	long rc = -ENOIOCTLCMD;
 
-	if (ecryptfs_file_to_private(file))
-		lower_file = ecryptfs_file_to_lower(file);
+	if (tse_file_to_private(file))
+		lower_file = tse_file_to_lower(file);
 	if (lower_file && lower_file->f_op && lower_file->f_op->compat_ioctl)
 		rc = lower_file->f_op->compat_ioctl(lower_file, cmd, arg);
 	return rc;
 }
 #endif
 
-const struct file_operations ecryptfs_dir_fops = {
-	.readdir = ecryptfs_readdir,
+const struct file_operations tse_dir_fops = {
+	.readdir = tse_readdir,
 	.read = generic_read_dir,
-	.unlocked_ioctl = ecryptfs_unlocked_ioctl,
+	.unlocked_ioctl = tse_unlocked_ioctl,
 #ifdef CONFIG_COMPAT
-	.compat_ioctl = ecryptfs_compat_ioctl,
+	.compat_ioctl = tse_compat_ioctl,
 #endif
-	.open = ecryptfs_open,
-	.flush = ecryptfs_flush,
-	.release = ecryptfs_release,
-	.fsync = ecryptfs_fsync,
-	.fasync = ecryptfs_fasync,
+	.open = tse_open,
+	.flush = tse_flush,
+	.release = tse_release,
+	.fsync = tse_fsync,
+	.fasync = tse_fasync,
 	.splice_read = generic_file_splice_read,
 	.llseek = default_llseek,
 };
 
-const struct file_operations ecryptfs_main_fops = {
+const struct file_operations tse_main_fops = {
 	.llseek = generic_file_llseek,
 	.read = do_sync_read,
-	.aio_read = ecryptfs_read_update_atime,
+	.aio_read = tse_read_update_atime,
 	.write = do_sync_write,
 	.aio_write = generic_file_aio_write,
-	.readdir = ecryptfs_readdir,
-	.unlocked_ioctl = ecryptfs_unlocked_ioctl,
+	.readdir = tse_readdir,
+	.unlocked_ioctl = tse_unlocked_ioctl,
 #ifdef CONFIG_COMPAT
-	.compat_ioctl = ecryptfs_compat_ioctl,
+	.compat_ioctl = tse_compat_ioctl,
 #endif
 	.mmap = generic_file_mmap,
-	.open = ecryptfs_open,
-	.flush = ecryptfs_flush,
-	.release = ecryptfs_release,
-	.fsync = ecryptfs_fsync,
-	.fasync = ecryptfs_fasync,
+	.open = tse_open,
+	.flush = tse_flush,
+	.release = tse_release,
+	.fsync = tse_fsync,
+	.fasync = tse_fasync,
 	.splice_read = generic_file_splice_read,
 };

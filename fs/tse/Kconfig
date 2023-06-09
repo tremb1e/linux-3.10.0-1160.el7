@@ -1,22 +1,22 @@
-config ECRYPT_FS
-	tristate "eCrypt filesystem layer support"
+config T_SE
+	tristate "Tse layer support"
 	depends on KEYS && CRYPTO && (ENCRYPTED_KEYS || ENCRYPTED_KEYS=n)
 	select CRYPTO_ECB
 	select CRYPTO_CBC
 	select CRYPTO_MD5
 	help
 	  Encrypted filesystem that operates on the VFS layer.  See
-	  <file:Documentation/filesystems/ecryptfs.txt> to learn more about
-	  eCryptfs.  Userspace components are required and can be
-	  obtained from <http://ecryptfs.sf.net>.
+	  <file:Documentation/filesystems/tse.txt> to learn more about
+	  Tse.  Userspace components are required and can be
+	  obtained from <http://tse.sf.net>.
 
 	  To compile this file system support as a module, choose M here: the
-	  module will be called ecryptfs.
+	  module will be called tse.
 
-config ECRYPT_FS_MESSAGING
+config T_SE_MESSAGING
 	bool "Enable notifications for userspace key wrap/unwrap"
-	depends on ECRYPT_FS
+	depends on T_SE
 	help
-	  Enables the /dev/ecryptfs entry for use by ecryptfsd. This allows
+	  Enables the /dev/tse entry for use by tsed. This allows
 	  for userspace to wrap/unwrap file encryption keys by other
 	  backends, like OpenSSL.

@@ -3057,12 +3057,12 @@ F:	drivers/media/dvb-frontends/ec100*
 
 ECRYPT FILE SYSTEM
 M:	Tyler Hicks <tyhicks@canonical.com>
-L:	ecryptfs@vger.kernel.org
-W:	http://ecryptfs.org
-W:	https://launchpad.net/ecryptfs
+L:	tse@vger.kernel.org
+W:	http://tse.org
+W:	https://launchpad.net/tse
 S:	Supported
-F:	Documentation/filesystems/ecryptfs.txt
-F:	fs/ecryptfs/
+F:	Documentation/filesystems/tse.txt
+F:	fs/tse/
 
 EDAC-CORE
 M:	Doug Thompson <dougthompson@xmission.com>
