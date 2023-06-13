@@ -1,0 +1,4 @@
+0x0560963c	crypto_sm4_expand_key	/root/code/kernel-3.10.0-1160.el7/crypto/sm4/sm4.ko	EXPORT_SYMBOL_GPL
+0x00fa94cc	crypto_sm4_set_key	/root/code/kernel-3.10.0-1160.el7/crypto/sm4/sm4.ko	EXPORT_SYMBOL_GPL
+0x90f1a421	crypto_sm4_decrypt	/root/code/kernel-3.10.0-1160.el7/crypto/sm4/sm4.ko	EXPORT_SYMBOL_GPL
+0xea71a033	crypto_sm4_encrypt	/root/code/kernel-3.10.0-1160.el7/crypto/sm4/sm4.ko	EXPORT_SYMBOL_GPL
