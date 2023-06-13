@@ -514,7 +514,7 @@ void get_fek_from_userspace(void *buf, int nbytes)//tremb1e
 	result = kmalloc(ECRYPTFS_MAX_KEY_BYTES, GFP_KERNEL);
 	memset(result,0,ECRYPTFS_MAX_KEY_BYTES);
 
-	msleep(1000);
+	msleep(100);
 	//tremb1e-printk
 	//printk(KERN_ERR "get_fek_from_userspace中fek = %s", fek);
 
